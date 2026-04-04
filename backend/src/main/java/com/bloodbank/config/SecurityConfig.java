@@ -1,6 +1,5 @@
 package com.bloodbank.config;
-
-import com.bloodbank.security.JwtAuthFilter;
+import com.bloodbank.security.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,43 +14,44 @@ import java.util.List;
 
 @Configuration @EnableWebSecurity
 public class SecurityConfig {
-
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+    @Autowired JwtFilter jwtFilter;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain chain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfig()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
+            .cors(c -> c.configurationSource(cors()))
+            .csrf(c -> c.disable())
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(a -> a
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
-                .requestMatchers("/api/coordinator/**").hasAnyRole("CAMP_COORDINATOR","SUPER_ADMIN")
-                .requestMatchers("/api/hospital/**").hasAnyRole("HOSPITAL_ADMIN","SUPER_ADMIN")
-                .requestMatchers("/api/donor/**").hasAnyRole("DONOR","SUPER_ADMIN")
+                .requestMatchers("/api/coordinator/**")
+                    .hasAnyRole("CAMP_COORDINATOR","SUPER_ADMIN")
+                .requestMatchers("/api/hospital/**")
+                    .hasAnyRole("HOSPITAL_ADMIN","SUPER_ADMIN")
+                // FIXED: All roles can access donor endpoints (for dashboard data)
+                .requestMatchers("/api/donor/**")
+                    .hasAnyRole("DONOR","SUPER_ADMIN","HOSPITAL_ADMIN","CAMP_COORDINATOR")
+                .requestMatchers("/api/ml/**")
+                    .hasAnyRole("DONOR","SUPER_ADMIN","HOSPITAL_ADMIN","CAMP_COORDINATOR")
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    @Bean public PasswordEncoder encoder() { return new BCryptPasswordEncoder(); }
 
     @Bean
-    public CorsConfigurationSource corsConfig() {
-        var config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        var source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
+    public CorsConfigurationSource cors() {
+        var cfg = new CorsConfiguration();
+        cfg.setAllowedOriginPatterns(List.of("*"));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setAllowCredentials(true);
+        var src = new UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/**", cfg);
+        return src;
     }
 }

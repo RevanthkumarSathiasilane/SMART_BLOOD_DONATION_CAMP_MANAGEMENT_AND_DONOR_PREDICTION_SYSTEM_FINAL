@@ -1,5 +1,4 @@
 package com.bloodbank.security;
-
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,43 +8,22 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
+    @Value("${jwt.secret}") private String secret;
+    @Value("${jwt.expiration}") private long expiration;
 
-    @Value("${jwt.secret}")
-    private String secret;
+    private Key key() { return Keys.hmacShaKeyFor(secret.getBytes()); }
 
-    @Value("${jwt.expiration}")
-    private long expiration;
-
-    private Key getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
-    }
-
-    public String generateToken(String username, String role) {
+    public String generate(String username, String role) {
         return Jwts.builder()
-                .setSubject(username)
-                .claim("role", role)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getKey())
-                .compact();
+            .setSubject(username).claim("role",role)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis()+expiration))
+            .signWith(key()).compact();
     }
-
-    public String extractUsername(String token) {
-        return Jwts.parserBuilder().setSigningKey(getKey()).build()
-                .parseClaimsJws(token).getBody().getSubject();
-    }
-
-    public String extractRole(String token) {
-        return (String) Jwts.parserBuilder().setSigningKey(getKey()).build()
-                .parseClaimsJws(token).getBody().get("role");
-    }
-
-    public boolean isTokenValid(String token) {
-        try {
-            Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+    public String username(String t) { return claims(t).getSubject(); }
+    public String role(String t)     { return (String) claims(t).get("role"); }
+    public boolean valid(String t)   { try{claims(t);return true;}catch(Exception e){return false;} }
+    private Claims claims(String t) {
+        return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(t).getBody();
     }
 }

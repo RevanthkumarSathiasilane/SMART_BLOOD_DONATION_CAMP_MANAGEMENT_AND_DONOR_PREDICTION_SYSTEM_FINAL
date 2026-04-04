@@ -1,0 +1,21 @@
+# Node
+node_modules/
+build/
+dist/
+
+# Logs
+*.log
+
+# Env
+.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Java / Spring Boot
+target/
+*.class

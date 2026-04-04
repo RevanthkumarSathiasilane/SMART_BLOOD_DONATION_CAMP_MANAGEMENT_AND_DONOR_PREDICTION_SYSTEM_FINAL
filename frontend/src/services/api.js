@@ -1,0 +1,12 @@
+import axios from"axios";
+const API=axios.create({baseURL:"http://localhost:8080/api"});
+API.interceptors.request.use(c=>{const t=localStorage.getItem("token");if(t)c.headers.Authorization="Bearer "+t;return c;});
+API.interceptors.response.use(r=>r,e=>{if(e.response?.status===401){localStorage.clear();window.location.href="/";}return Promise.reject(e);});
+export const authAPI={login:d=>API.post("/auth/login",d),signup:d=>API.post("/auth/signup",d)};
+export const donorAPI={getAll:()=>API.get("/donor/all"),register:d=>API.post("/donor/register",d),update:(id,d)=>API.put("/donor/"+id,d),eligibility:id=>API.get("/donor/eligibility/"+id),stats:()=>API.get("/donor/stats"),byBG:bg=>API.get("/donor/blood-group/"+bg),eligible:()=>API.get("/donor/eligible")};
+export const campAPI={getAll:()=>API.get("/coordinator/camps"),getUpcoming:()=>API.get("/coordinator/camps/upcoming"),getCompleted:()=>API.get("/coordinator/camps/completed"),create:d=>API.post("/coordinator/camps",d),update:(id,d)=>API.put("/coordinator/camps/"+id,d),delete:id=>API.delete("/coordinator/camps/"+id),stats:()=>API.get("/coordinator/stats")};
+export const stockAPI={getAll:()=>API.get("/hospital/stock"),getAlerts:()=>API.get("/hospital/stock/alerts"),getSummary:()=>API.get("/hospital/stock/summary"),update:(bg,units)=>API.put("/hospital/stock/"+bg,{units}),add:(bg,units)=>API.post("/hospital/stock/add/"+bg,{units})};
+export const adminAPI={overview:()=>API.get("/admin/overview"),users:()=>API.get("/admin/users"),delUser:id=>API.delete("/admin/users/"+id)};
+export const mlAPI={predictDonor:d=>API.post("/ml/predict-donor",d),predictStock:d=>API.post("/ml/predict-stock",d),location:d=>API.post("/ml/recommend-location",d),chat:d=>API.post("/ml/chat",d)};
+export const publicAPI={stats:()=>API.get("/public/stats")};
+export default API;

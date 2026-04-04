@@ -1,8 +1,16 @@
--- Connect to the database
---\c bloodbank;
+-- Run this FIRST as postgres superuser:
+-- psql -U postgres
+-- Then paste these commands:
 
--- USERS table
-CREATE TABLE users (
+--CREATE DATABASE bloodbank;
+--CREATE USER blooduser WITH PASSWORD 'bloodpass123';
+--GRANT ALL PRIVILEGES ON DATABASE bloodbank TO blooduser;
+
+-- Then connect to bloodbank and run the rest:
+-- \c bloodbank
+-- GRANT ALL ON SCHEMA public TO blooduser;
+
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -11,14 +19,13 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- DONORS table
-CREATE TABLE donors (
+CREATE TABLE IF NOT EXISTS donors (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(150) NOT NULL,
-    age INTEGER NOT NULL CHECK (age >= 18 AND age <= 65),
-    gender VARCHAR(10) NOT NULL,
-    blood_group VARCHAR(5) NOT NULL,
+    name VARCHAR(150),
+    age INTEGER,
+    gender VARCHAR(10),
+    blood_group VARCHAR(5),
     phone VARCHAR(15),
     city VARCHAR(100),
     last_donation_date DATE,
@@ -27,15 +34,14 @@ CREATE TABLE donors (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- CAMPS table
-CREATE TABLE camps (
+CREATE TABLE IF NOT EXISTS camps (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
-    location VARCHAR(255) NOT NULL,
+    name VARCHAR(200),
+    location VARCHAR(255),
     city VARCHAR(100),
-    camp_date DATE NOT NULL,
-    start_time TIME,
-    end_time TIME,
+    camp_date DATE,
+    start_time VARCHAR(10),
+    end_time VARCHAR(10),
     coordinator_id BIGINT REFERENCES users(id),
     attendance_count INTEGER DEFAULT 0,
     units_collected DECIMAL(8,2) DEFAULT 0,
@@ -43,8 +49,7 @@ CREATE TABLE camps (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- BLOOD STOCK table
-CREATE TABLE blood_stock (
+CREATE TABLE IF NOT EXISTS blood_stock (
     id BIGSERIAL PRIMARY KEY,
     blood_group VARCHAR(5) NOT NULL UNIQUE,
     units_available DECIMAL(8,2) DEFAULT 0,
@@ -52,30 +57,18 @@ CREATE TABLE blood_stock (
     last_updated TIMESTAMP DEFAULT NOW()
 );
 
--- DONATIONS table
-CREATE TABLE donations (
+CREATE TABLE IF NOT EXISTS donations (
     id BIGSERIAL PRIMARY KEY,
     donor_id BIGINT REFERENCES donors(id),
     camp_id BIGINT REFERENCES camps(id),
-    donation_date DATE NOT NULL,
+    donation_date DATE,
     units_donated DECIMAL(5,2) DEFAULT 1,
     blood_group VARCHAR(5),
     status VARCHAR(20) DEFAULT 'COMPLETED',
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- PREDICTIONS table (stores ML results)
-CREATE TABLE predictions (
-    id BIGSERIAL PRIMARY KEY,
-    prediction_type VARCHAR(50),
-    input_data TEXT,
-    output_data TEXT,
-    confidence DECIMAL(5,4),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- AUDIT LOGS table
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id),
     action VARCHAR(200),
@@ -84,7 +77,10 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Initialize blood stock for all 8 blood groups
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO blooduser;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO blooduser;
+
 INSERT INTO blood_stock (blood_group, units_available, critical_level) VALUES
-('A+', 45, 10), ('A-', 12, 5), ('B+', 38, 10), ('B-', 8, 5),
-('AB+', 22, 8), ('AB-', 5, 3), ('O+', 60, 15), ('O-', 14, 5);
+('A+',45,10),('A-',8,5),('B+',38,10),('B-',6,5),
+('AB+',22,8),('AB-',3,3),('O+',60,15),('O-',11,5)
+ON CONFLICT (blood_group) DO NOTHING;
